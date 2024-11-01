@@ -129,13 +129,13 @@ async def send_user_info_to_nodejs(name: str, phone: str):
     except Exception as err:
         print(f"其他錯誤發生: {err}")
 
-async def send_face_signin_to_nodejs(name: str):
+async def send_face_signin_to_nodejs(recognizedPhone: str):
     """
     將辨識出的用戶名稱發送到 NodeJS Express 後端進行登入。
     """
     url = "http://140.119.19.85:80/api/1.0/user/faceSignin"
     payload = {
-        "name": name
+        "recognizedPhone": recognizedPhone
     }
     headers = {
         "Content-Type": "application/json"
