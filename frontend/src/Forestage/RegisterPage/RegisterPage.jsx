@@ -74,7 +74,7 @@ const RegisterMember = () => {
     formData.append("phone", member.phone);
     const photoBlob = dataURLtoBlob(member.photo);
     if (member.photo) {
-      formData.append("picture", photoBlob, "photo.png"); // 'photo.png' 是檔案名稱
+      formData.append("photo", photoBlob, "photo.png"); // 'photo.png' 是檔案名稱
     }
 
     const response = await userFaceSignUpAPI(formData);
