@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "face-recognition-w-deepface-master"
+version = "0.1.0"
+description = ""
+authors = ["Lu-weiting <runeeld23@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+tensorflow = "^2.17.0"
+numpy = "^1.26"
+deepface = "^0.0.93"
+opencv-python = "^4.10.0.84"
+matplotlib = "^3.9.2"
+tf-keras = "^2.17.0"
+fastapi = "^0.114.1"
+uvicorn = "^0.30.6"
+pandas = "^1.5.3"
+python-multipart = "^0.0.5"
+httpx = "^0.27.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

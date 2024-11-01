@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  beya_frontend:
+      build: 
+        context: ./frontend
+        dockerfile: Dockerfile
+      container_name: beya_frontend_container
+      environment:
+        - VITE_REACT_APP_API=${VITE_REACT_APP_API}
+        - SCANNER_DEVICE=/dev/hidraw0
+      networks:
+        - beya_network
+      devices:
+        - "/dev/hidraw0:/dev/hidraw0:rwm"
+        - "/dev/video0:/dev/video0:rwm"
+        - "/dev/video1:/dev/video1:rwm"
+      ports:
+        - 3030:3030
+      privileged: true
+
+  face-recognition:
+    build:
+      context: ./faceModel/FaceModel
+      dockerfile: Dockerfile
+    container_name: face_recognition_container
+    volumes:
+      - face_data:/app/faceModel/Data
+    devices:
+      - "/dev/video0:/dev/video0:rwm"
+      - "/dev/video1:/dev/video1:rwm"
+    ports:
+      - "8000:8000"
+    networks:
+      - beya_network
+    privileged: true
+
+  nginx:
+    image: nginx
+    container_name: nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - beya_network
+
+volumes:
+  face_data:
+    driver: local 
+
+networks:
+  beya_network:
+    name: beya_frontend_network
