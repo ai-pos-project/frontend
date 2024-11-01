@@ -195,12 +195,6 @@ async def recognize_and_get_result():
 
     return user_info
 
-def get_name_from_path(path: str) -> str:
-    """
-    根據影像路徑獲取用戶名稱。
-    """
-    dir_path = os.path.dirname(path)
-    return os.path.basename(dir_path)
 
 @app.post("/face/register")
 async def register_user(
