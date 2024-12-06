@@ -156,7 +156,7 @@ def realtime_face_recognition():
 
 # 异步发送用户信息到 NodeJS 后端
 async def send_user_info_to_nodejs(name: str, phone: str):
-    url = "http://140.119.19.85:80/api/1.0/user/faceSignup"
+    url = "http://140.119.19.85:3000/api/1.0/user/faceSignup"
     payload = {
         "name": name,
         "phone": phone
@@ -175,7 +175,7 @@ async def send_user_info_to_nodejs(name: str, phone: str):
         print(f"其他错误发生: {err}")
 
 async def send_face_signin_to_nodejs(recognizedPhone: str):
-    url = "http://140.119.19.85:80/api/1.0/user/faceSignin"
+    url = "http://140.119.19.85:3000/api/1.0/user/faceSignin"
     payload = {
         "recognizedPhone": recognizedPhone
     }
