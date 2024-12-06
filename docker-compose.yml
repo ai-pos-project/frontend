@@ -16,7 +16,7 @@ services:
         - "/dev/video0:/dev/video0:rwm"
         - "/dev/video1:/dev/video1:rwm"
       ports:
-        - 3030:3030
+        - 80:80
       privileged: true
 
   face-recognition:
