@@ -22,10 +22,11 @@ services:
   face-recognition:
     build:
       context: ./faceModel/FaceModel
-      dockerfile: Dockerfile
+      dockerfile: dev.Dockerfile
     container_name: face_recognition_container
     volumes:
       - face_data:/app/faceModel/Data
+      - ./faceModel/FaceModel/faceModel/model:/app/model
     devices:
       - "/dev/video0:/dev/video0:rwm"
       - "/dev/video1:/dev/video1:rwm"
@@ -35,16 +36,16 @@ services:
       - beya_network
     privileged: true
 
-  nginx:
-    image: nginx
-    container_name: nginx
-    restart: always
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-    networks:
-      - beya_network
+  # nginx:
+  #   image: nginx
+  #   container_name: nginx
+  #   restart: always
+  #   ports:
+  #     - "80:80"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/conf.d/default.conf
+  #   networks:
+  #     - beya_network
 
 volumes:
   face_data:
