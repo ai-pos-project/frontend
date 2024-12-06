@@ -35,10 +35,12 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY . .
 
 # 创建非 root 用户并设置权限
-RUN useradd -m nonroot && chown -R nonroot:nonroot /app
+RUN useradd -m nonroot && chown -R nonroot:nonroot /app && usermod -aG video nonroot
 
-# 切换到非 root 用户
+# 切換到非 root 用戶
 USER nonroot
+
+# USER root
 
 # 暴露端口
 EXPOSE 8000
