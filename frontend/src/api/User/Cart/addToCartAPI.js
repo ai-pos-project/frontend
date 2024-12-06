@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 
 // const api = import.meta.env.VITE_REACT_APP_API;
-const api = `http://140.119.19.85:80/api/1.0`;
+const api = `http://140.119.19.85:3000/api/1.0`;
 const apiUrl = `${api}/user/shoppingCart`;
 
 export async function addToCartAPI(body, token) {

@@ -4,7 +4,7 @@ import Swal from "sweetalert2";
 // const api = import.meta.env.VITE_REACT_APP_API;
 
 // const apiUrl = `${api}/manager/updateGoods`;
-const apiUrl = `http://140.119.19.85:80/api/1.0/manager/updateGoods`;
+const apiUrl = `http://140.119.19.85:3000/api/1.0/manager/updateGoods`;
 export async function updateGoodsAPI(body, token) {
   try {
     const response = await axios.put(apiUrl, body, {
