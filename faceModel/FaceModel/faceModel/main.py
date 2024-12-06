@@ -16,61 +16,59 @@ import httpx
 import shutil
 import time
 
-# 初始化 FastAPI 应用
+# 初始化 FastAPI 應用
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 根据需要设置允许的来源
+    allow_origins=["*"],  # 根據需求設定允許的來源
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 全局变量
-recognition_results = {"name": "未知"}  # 存储最终结果
+# 全域變數
+recognition_results = {"name": "未知"}  # 儲存最終的辨識結果
 
-# 加载 MobileFaceNet 模型
+# 設定裝置（GPU 或 CPU）
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# 请根据实际情况加载模型
-model_path = '/app/model/model.pt'  # 请确保模型路径正确
+# 請確保 model.pt 路徑正確
+model_path = '/app/model/model.pt'
 model = torch.jit.load(model_path, map_location=device)
 model.eval()
 
-# 初始化 MTCNN 用于人脸检测
+# 初始化 MTCNN 用於人臉偵測
 mtcnn = MTCNN(keep_all=True, device=device)
 
-# 特征数据库（字典）：{ 'phone_number': tensor_features }
+# 特徵資料庫 (字典)：{ 'phone_number': tensor_features }
 feature_db = {}
 
-# 加载已有的特征数据库
 def load_feature_db():
     global feature_db
     data_dir = Path('/app/faceModel/Data')
     if not data_dir.exists():
-        print(f"数据目录 {data_dir} 不存在。")
+        print(f"資料目錄 {data_dir} 不存在。")
         return
     for user_dir in data_dir.iterdir():
         if user_dir.is_dir():
             phone_number = user_dir.name
             feature_files = list(user_dir.glob('*.npy'))
             if feature_files:
-                # 假设每个用户只有一个特征文件
+                # 假設每位用戶只有一個特徵檔案
                 feature_file = feature_files[0]
                 features = np.load(str(feature_file))
                 feature_db[phone_number] = torch.tensor(features).to(device)
             else:
-                print(f"用户 {phone_number} 的特征文件不存在。")
+                print(f"用戶 {phone_number} 的特徵檔案不存在。")
 
 load_feature_db()
 
-# 图像预处理函数
 def preprocess(face):
-    # 将图像转换为 RGB
+    # 將圖片轉為 RGB
     face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-    # 转换为 PIL 图像
+    # PIL 圖片轉換
     face = transforms.ToPILImage()(face)
-    # 定义转换
+    # 定義轉換
     transform = transforms.Compose([
         transforms.Resize((112, 112)),
         transforms.ToTensor(),
@@ -78,45 +76,44 @@ def preprocess(face):
     ])
     return transform(face).unsqueeze(0).to(device)
 
-# 特征提取函数
 def extract_features(face):
     with torch.no_grad():
         img_tensor = preprocess(face)
         features = model(img_tensor)
     return features
 
-# 计算余弦相似度
 def cosine_similarity(a, b):
     return torch.nn.functional.cosine_similarity(a, b).item()
 
-# 实时人脸识别函数
 def realtime_face_recognition():
     global recognition_results
     vid = cv2.VideoCapture('/dev/video0')
     if not vid.isOpened():
-        print("无法打开摄像头")
+        print("無法打開攝影機")
         return
     else:
-        print("摄像头已打开")
+        print("攝影機已打開")
+
     names_detected = []
     start_time = time.time()
 
     while True:
         ret, frame = vid.read()
         if not ret:
-            print("无法读取帧")
+            print("無法讀取影像幀")
             break
 
         try:
-            # 人脸检测
+            # 人臉偵測
             boxes, _ = mtcnn.detect(frame)
-            if boxes != []:
+            # 確保 boxes 不為 None 且有資料
+            if boxes is not None and len(boxes) > 0:
                 for box in boxes:
                     x1, y1, x2, y2 = map(int, box)
                     face = frame[y1:y2, x1:x2]
-                    # 特征提取
+                    # 特徵提取
                     features = extract_features(face)
-                    # 与数据库比对
+                    # 與資料庫比對
                     best_match = None
                     highest_score = 0.0
                     for phone_number, db_features in feature_db.items():
@@ -124,37 +121,42 @@ def realtime_face_recognition():
                         if score > highest_score:
                             highest_score = score
                             best_match = phone_number
-                    # 设置阈值，假设为 0.5
-                    if highest_score > 0.5 and best_match != None:
+                    # 設定閾值，例如 0.5
+                    if highest_score > 0.5 and best_match is not None:
                         names_detected.append(best_match)
-                        # 在图像上绘制矩形和姓名
-                        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                        cv2.putText(frame, best_match, (x1, y1 - 10),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+                        # 若在無圖形介面的環境下，不需顯示圖像窗口
+                        # 但若要在本地測試可視化，請確保有 GUI 環境才使用下列代碼
+                        # cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                        # cv2.putText(frame, best_match, (x1, y1 - 10),
+                        #             cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
                     else:
-                        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
-                        cv2.putText(frame, "未知", (x1, y1 - 10),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
-        except Exception as e:
-            print(f"发生错误: {e}")
+                        # 未達閾值或未知對象
+                        pass
+                # 假如想要在有 GUI 的環境查看結果，可取消註解：
+                # cv2.imshow('frame', frame)
+                # if cv2.waitKey(1) & 0xFF == ord('q'):
+                #     break
+            else:
+                # 未偵測到人臉，不做任何處理
+                pass
 
-        # 检查是否已经过了10秒，并返回10秒内最常出现的姓名
+        except Exception as e:
+            print(f"發生錯誤: {e}")
+
+        # 每 10 秒結束循環，回傳最常出現的名稱
         if time.time() - start_time >= 10:
             if names_detected:
                 most_common_name = Counter(names_detected).most_common(1)[0][0]
                 recognition_results["name"] = most_common_name
-                print(f"检测结果: {most_common_name}")
+                print(f"偵測結果: {most_common_name}")
             else:
                 recognition_results["name"] = "未知"
-            break  # 退出循环
-
-        # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #     break
+            break  # 跳出循環
 
     vid.release()
-    cv2.destroyAllWindows()
+    # 不要在無圖形介面下使用下列函式
+    # cv2.destroyAllWindows()
 
-# 异步发送用户信息到 NodeJS 后端
 async def send_user_info_to_nodejs(name: str, phone: str):
     url = "http://140.119.19.85:3000/api/1.0/user/faceSignup"
     payload = {
@@ -168,11 +170,11 @@ async def send_user_info_to_nodejs(name: str, phone: str):
         async with httpx.AsyncClient() as client:
             response = await client.post(url, json=payload, headers=headers, timeout=10.0)
             response.raise_for_status()
-            print(f"成功将用户信息发送到 NodeJS 后端：{response.status_code}")
+            print(f"成功將用戶資訊發送到 NodeJS 後端：{response.status_code}")
     except httpx.HTTPStatusError as http_err:
-        print(f"HTTP 错误发生: {http_err.response.status_code} - {http_err.response.text}")
+        print(f"HTTP 錯誤發生: {http_err.response.status_code} - {http_err.response.text}")
     except Exception as err:
-        print(f"其他错误发生: {err}")
+        print(f"其他錯誤發生: {err}")
 
 async def send_face_signin_to_nodejs(recognizedPhone: str):
     url = "http://140.119.19.85:3000/api/1.0/user/faceSignin"
@@ -186,16 +188,15 @@ async def send_face_signin_to_nodejs(recognizedPhone: str):
         async with httpx.AsyncClient() as client:
             response = await client.post(url, json=payload, headers=headers, timeout=10.0)
             response.raise_for_status()
-            print(f"成功将识别结果发送到 NodeJS 后端：{response.status_code}")
+            print(f"成功將辨識結果發送到 NodeJS 後端：{response.status_code}")
             return response.json()
     except httpx.HTTPStatusError as http_err:
-        print(f"HTTP 错误发生: {http_err.response.status_code} - {http_err.response.text}")
-        raise HTTPException(status_code=500, detail="NodeJS 后端服务错误。")
+        print(f"HTTP 錯誤發生: {http_err.response.status_code} - {http_err.response.text}")
+        raise HTTPException(status_code=500, detail="NodeJS 後端服務錯誤。")
     except Exception as err:
-        print(f"其他错误发生: {err}")
-        raise HTTPException(status_code=500, detail="无法与 NodeJS 后端通信。")
+        print(f"其他錯誤發生: {err}")
+        raise HTTPException(status_code=500, detail="無法與 NodeJS 後端通信。")
 
-# 启动识别线程
 def start_recognition_thread():
     recognition_thread = threading.Thread(target=realtime_face_recognition)
     recognition_thread.start()
@@ -207,17 +208,17 @@ def read_root():
 
 @app.get("/face/recognize_and_get_result")
 async def recognize_and_get_result():
-    # 启动实时人脸识别
+    # 啟動即時人臉辨識執行緒
     thread = start_recognition_thread()
-    thread.join()  # 等待识别完成
+    thread.join()  # 等待辨識執行完成
 
     recognized_name = recognition_results.get("name", "未知")
-    print(f"识别出的名称: {recognized_name}")
+    print(f"辨識出的名稱: {recognized_name}")
 
     if recognized_name == "未知":
-        raise HTTPException(status_code=404, detail="未识别到任何用户。")
+        raise HTTPException(status_code=404, detail="未識別到任何用戶。")
 
-    # 将识别结果发送到 NodeJS 后端进行登录
+    # 將辨識結果發送到 NodeJS 後端進行登入
     user_info = await send_face_signin_to_nodejs(recognized_name)
     print(user_info)
 
@@ -230,56 +231,56 @@ async def register_user(
     phone: str = Form(...),
     photo: UploadFile = File(...)
 ):
-    # 验证电话号码格式
+    # 驗證電話格式
     if not phone.isdigit():
-        raise HTTPException(status_code=400, detail="电话号码必须为数字。")
+        raise HTTPException(status_code=400, detail="電話號碼必須為數字。")
 
-    # 定义数据目录
+    # 定義資料夾路徑
     data_dir = Path('/app/faceModel/Data')
     user_dir = data_dir / phone
 
-    # 检查是否已经注册过
+    # 檢查是否已註冊
     if user_dir.exists():
-        print("此电话号码已经注册过。")
-        raise HTTPException(status_code=400, detail="此电话号码已经注册过。")
+        print("此電話號碼已經註冊過。")
+        raise HTTPException(status_code=400, detail="此電話號碼已經註冊過。")
 
     try:
-        # 创建用户目录
+        # 創建用戶資料夾
         user_dir.mkdir(parents=True, exist_ok=False)
 
-        # 读取上传的照片
+        # 讀取上傳的照片
         content = await photo.read()
         file_extension = os.path.splitext(photo.filename)[1].lower()
         if file_extension not in [".jpg", ".jpeg", ".png"]:
-            raise HTTPException(status_code=400, detail="不支持的图片格式。仅支持 JPG、JPEG、PNG。")
+            raise HTTPException(status_code=400, detail="不支持的圖片格式。僅支援 JPG、JPEG、PNG。")
 
-        # 解码图片
+        # 解碼圖片
         image = cv2.imdecode(np.frombuffer(content, np.uint8), cv2.IMREAD_COLOR)
         if image is None:
-            raise HTTPException(status_code=400, detail="无法读取上传的图片。")
+            raise HTTPException(status_code=400, detail="無法讀取上傳的圖片。")
 
-        # 人脸检测
+        # 人臉偵測
         boxes, _ = mtcnn.detect(image)
-        if boxes is not None:
+        if boxes is not None and len(boxes) > 0:
             x1, y1, x2, y2 = map(int, boxes[0])
             face = image[y1:y2, x1:x2]
-            # 特征提取
+            # 特徵提取
             features = extract_features(face).cpu().numpy()
-            # 保存特征到用户目录
+            # 保存特徵檔案
             feature_filename = f"{phone}_features.npy"
             np.save(user_dir / feature_filename, features)
-            # 更新内存中的特征数据库
+            # 更新特徵資料庫
             feature_db[phone] = torch.tensor(features).to(device)
         else:
-            raise HTTPException(status_code=400, detail="未检测到人脸，请上传清晰的正面人脸照片。")
+            raise HTTPException(status_code=400, detail="未偵測到人臉，請上傳清晰的正面人臉照片。")
 
-        # 异步发送用户信息到 NodeJS 后端
+        # 背景任務發送用戶資訊到 NodeJS 後端
         background_tasks.add_task(send_user_info_to_nodejs, name, phone)
 
-        return {"message": "用户注册成功。"}
+        return {"message": "用戶註冊成功。"}
 
     except Exception as e:
-        # 如果出现错误，删除已创建的目录
+        # 如果發生錯誤，刪除已創建的目錄
         if user_dir.exists():
             shutil.rmtree(user_dir)
-        raise HTTPException(status_code=500, detail=f"注册失败：{str(e)}")
+        raise HTTPException(status_code=500, detail=f"註冊失敗：{str(e)}")
