@@ -4,6 +4,10 @@ version = "0.1.0"
 description = ""
 authors = ["Lu-weiting <runeeld23@gmail.com>"]
 
+packages = [
+  { include = "faceModel" }
+]
+
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
 fastapi = "^0.115.6"

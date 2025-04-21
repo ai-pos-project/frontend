@@ -15,6 +15,8 @@ RUN pip install --no-cache-dir poetry
 # 复制 pyproject.toml 和 poetry.lock（如果存在）
 COPY pyproject.toml poetry.lock* ./
 
+COPY faceModel ./faceModel
+
 # 配置 Poetry，不创建虚拟环境
 RUN poetry config virtualenvs.create false
 
